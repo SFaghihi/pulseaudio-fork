@@ -1511,7 +1511,8 @@ if HAVE_BLUEZ_5
 modlibexec_LTLIBRARIES += \
 		libbluez5-util.la \
 		module-bluez5-discover.la \
-		module-bluez5-device.la
+		module-bluez5-device.la \
+        module-bluez5-server.la
 endif
 
 # RAOP depends on RTP, and we don't support RTP on Windows, see comment at
@@ -2192,6 +2193,11 @@ module_bluez5_device_la_SOURCES = modules/bluetooth/module-bluez5-device.c
 module_bluez5_device_la_LDFLAGS = $(MODULE_LDFLAGS)
 module_bluez5_device_la_LIBADD = $(MODULE_LIBADD) libbluez5-util.la
 module_bluez5_device_la_CFLAGS = $(AM_CFLAGS) -DPA_MODULE_NAME=module_bluez5_device
+
+module_bluez5_server_la_SOURCES = modules/bluetooth/module-bluez5-server.c
+module_bluez5_server_la_LDFLAGS = $(MODULE_LDFLAGS)
+module_bluez5_server_la_LIBADD = $(MODULE_LIBADD) libbluez5-util.la
+module_bluez5_server_la_CFLAGS = $(AM_CFLAGS) -DPA_MODULE_NAME=module_bluez5_server
 
 # Apple Airtunes/RAOP
 module_raop_sink_la_SOURCES = modules/raop/module-raop-sink.c

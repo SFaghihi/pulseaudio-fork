@@ -113,6 +113,7 @@ if get_option('bluez5')
     [ 'module-bluetooth-policy', 'bluetooth/module-bluetooth-policy.c', [], [], [dbus_dep] ],
     [ 'module-bluez5-device', 'bluetooth/module-bluez5-device.c', [], [], [], libbluez5_util ],
     [ 'module-bluez5-discover', 'bluetooth/module-bluez5-discover.c', [], [], [dbus_dep], libbluez5_util ],
+    [ 'module-bluez5-server', 'bluetooth/module-bluez5-server.c', [], [], [dbus_dep], libbluez5_util ],
   ]
 endif
 
