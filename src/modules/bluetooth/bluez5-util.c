@@ -91,6 +91,10 @@ struct pa_bluetooth_discovery {
     pa_hashmap *devices;
     pa_hashmap *transports;
 
+    bool is_server;
+    bool a2dp_sink;
+    bool a2dp_source;
+
     int headset_backend;
     pa_bluetooth_backend *ofono_backend, *native_backend;
     PA_LLIST_HEAD(pa_dbus_pending, pending);
@@ -483,6 +487,38 @@ static void parse_transport_property(pa_bluetooth_transport *t, DBusMessageIter 
                 }
 
                 pa_bluetooth_transport_set_state(t, state);
+            }
+
+            break;
+        }
+
+        case DBUS_TYPE_UINT16: {
+
+            dbus_uint16_t value;
+            dbus_message_iter_get_basic(&variant_i, &value);
+
+            if (pa_streq(key, "Volume")) {
+                switch (t->profile) {
+                    case PA_BLUETOOTH_PROFILE_HEADSET_HEAD_UNIT:
+                    case PA_BLUETOOTH_PROFILE_A2DP_SINK: {
+                        t->microphone_gain = value;
+                        pa_hook_fire(
+                            &t->device->discovery->hooks[PA_BLUETOOTH_HOOK_TRANSPORT_MICROPHONE_GAIN_CHANGED],
+                            t);
+                        break;
+                    }
+                    case PA_BLUETOOTH_PROFILE_HEADSET_AUDIO_GATEWAY:
+                    case PA_BLUETOOTH_PROFILE_A2DP_SOURCE: {
+                        t->speaker_gain = value;
+                        pa_hook_fire(
+                            &t->device->discovery->hooks[PA_BLUETOOTH_HOOK_TRANSPORT_SPEAKER_GAIN_CHANGED],
+                            t);
+                        break;
+                    }
+                    case PA_BLUETOOTH_PROFILE_OFF: {
+                        break;
+                    }
+                }
             }
 
             break;
@@ -966,8 +1002,14 @@ static void parse_interfaces_and_properties(pa_bluetooth_discovery *y, DBusMessa
              * pulseaudio does not implement yet, patches are waiting in queue */
             a2dp_codec_sbc = pa_bluetooth_get_a2dp_codec("sbc");
             pa_assert(a2dp_codec_sbc);
-            register_endpoint(y, a2dp_codec_sbc, path, A2DP_SINK_ENDPOINT "/sbc", PA_BLUETOOTH_UUID_A2DP_SINK);
-            register_endpoint(y, a2dp_codec_sbc, path, A2DP_SOURCE_ENDPOINT "/sbc", PA_BLUETOOTH_UUID_A2DP_SOURCE);
+            if (y->a2dp_sink) {
+                register_endpoint(y, a2dp_codec_sbc, path, A2DP_SINK_ENDPOINT "/sbc",
+                                  PA_BLUETOOTH_UUID_A2DP_SINK);
+            }
+            if (y->a2dp_source) {
+                register_endpoint(y, a2dp_codec_sbc, path, A2DP_SOURCE_ENDPOINT "/sbc",
+                                  PA_BLUETOOTH_UUID_A2DP_SOURCE);
+            }
 
         } else if (pa_streq(interface, BLUEZ_DEVICE_INTERFACE)) {
 
@@ -1073,10 +1115,12 @@ static void get_managed_objects_reply(DBusPendingCall *pending, void *userdata) 
 
     y->objects_listed = true;
 
-    if (!y->native_backend && y->headset_backend != HEADSET_BACKEND_OFONO)
-        y->native_backend = pa_bluetooth_native_backend_new(y->core, y, (y->headset_backend == HEADSET_BACKEND_NATIVE));
-    if (!y->ofono_backend && y->headset_backend != HEADSET_BACKEND_NATIVE)
-        y->ofono_backend = pa_bluetooth_ofono_backend_new(y->core, y);
+    if (y->headset_backend != HEADSET_BACKEND_DISABLE) {
+        if (!y->native_backend && y->headset_backend != HEADSET_BACKEND_OFONO)
+            y->native_backend = pa_bluetooth_native_backend_new(y->core, y, (y->headset_backend == HEADSET_BACKEND_NATIVE));
+        if (!y->ofono_backend && y->headset_backend != HEADSET_BACKEND_NATIVE)
+            y->ofono_backend = pa_bluetooth_ofono_backend_new(y->core, y);
+    }
 
 finish:
     dbus_message_unref(r);
@@ -1583,6 +1627,11 @@ static void endpoint_done(pa_bluetooth_discovery *y, const char *endpoint) {
 }
 
 pa_bluetooth_discovery* pa_bluetooth_discovery_get(pa_core *c, int headset_backend) {
+    return pa_bluetooth_discovery_get_server(c, headset_backend, false, true, true);
+}
+
+pa_bluetooth_discovery* pa_bluetooth_discovery_get_server(pa_core *c, int headset_backend,
+                                                   bool is_server, bool a2dp_sink, bool a2dp_source) {
     pa_bluetooth_discovery *y;
     DBusError err;
     DBusConnection *conn;
@@ -1593,6 +1642,9 @@ pa_bluetooth_discovery* pa_bluetooth_discovery_get(pa_core *c, int headset_backe
     y = pa_xnew0(pa_bluetooth_discovery, 1);
     PA_REFCNT_INIT(y);
     y->core = c;
+    y->is_server = is_server;
+    y->a2dp_sink = a2dp_sink;
+    y->a2dp_source = a2dp_source;
     y->headset_backend = headset_backend;
     y->adapters = pa_hashmap_new_full(pa_idxset_string_hash_func, pa_idxset_string_compare_func, NULL,
                                       (pa_free_cb_t) adapter_free);
@@ -1644,13 +1696,17 @@ pa_bluetooth_discovery* pa_bluetooth_discovery_get(pa_core *c, int headset_backe
     for (i = 0; i < count; i++) {
         a2dp_codec = pa_bluetooth_a2dp_codec_iter(i);
 
-        endpoint = pa_sprintf_malloc("%s/%s", A2DP_SINK_ENDPOINT, a2dp_codec->name);
-        endpoint_init(y, endpoint);
-        pa_xfree(endpoint);
+        if (y->a2dp_sink) {
+            endpoint = pa_sprintf_malloc("%s/%s", A2DP_SINK_ENDPOINT, a2dp_codec->name);
+            endpoint_init(y, endpoint);
+            pa_xfree(endpoint);
+        }
 
-        endpoint = pa_sprintf_malloc("%s/%s", A2DP_SOURCE_ENDPOINT, a2dp_codec->name);
-        endpoint_init(y, endpoint);
-        pa_xfree(endpoint);
+        if (y->a2dp_source) {
+            endpoint = pa_sprintf_malloc("%s/%s", A2DP_SOURCE_ENDPOINT, a2dp_codec->name);
+            endpoint_init(y, endpoint);
+            pa_xfree(endpoint);
+        }
     }
 
     get_managed_objects(y);
@@ -1727,13 +1783,17 @@ void pa_bluetooth_discovery_unref(pa_bluetooth_discovery *y) {
         for (i = 0; i < count; i++) {
             a2dp_codec = pa_bluetooth_a2dp_codec_iter(i);
 
-            endpoint = pa_sprintf_malloc("%s/%s", A2DP_SINK_ENDPOINT, a2dp_codec->name);
-            endpoint_done(y, endpoint);
-            pa_xfree(endpoint);
+            if (y->a2dp_sink) {
+                endpoint = pa_sprintf_malloc("%s/%s", A2DP_SINK_ENDPOINT, a2dp_codec->name);
+                endpoint_done(y, endpoint);
+                pa_xfree(endpoint);
+            }
 
-            endpoint = pa_sprintf_malloc("%s/%s", A2DP_SOURCE_ENDPOINT, a2dp_codec->name);
-            endpoint_done(y, endpoint);
-            pa_xfree(endpoint);
+            if (y->a2dp_source) {
+                endpoint = pa_sprintf_malloc("%s/%s", A2DP_SOURCE_ENDPOINT, a2dp_codec->name);
+                endpoint_done(y, endpoint);
+                pa_xfree(endpoint);
+            }
         }
 
         pa_dbus_connection_unref(y->connection);

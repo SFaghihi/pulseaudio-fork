@@ -177,8 +177,11 @@ static inline bool pa_bluetooth_uuid_is_hsp_hs(const char *uuid) {
 #define HEADSET_BACKEND_OFONO 0
 #define HEADSET_BACKEND_NATIVE 1
 #define HEADSET_BACKEND_AUTO 2
+#define HEADSET_BACKEND_DISABLE 3
 
 pa_bluetooth_discovery* pa_bluetooth_discovery_get(pa_core *core, int headset_backend);
+pa_bluetooth_discovery* pa_bluetooth_discovery_get_server(pa_core *core, int headset_backend,
+                                                   bool is_server, bool a2dp_sink, bool a2dp_source);
 pa_bluetooth_discovery* pa_bluetooth_discovery_ref(pa_bluetooth_discovery *y);
 void pa_bluetooth_discovery_unref(pa_bluetooth_discovery *y);
 void pa_bluetooth_discovery_set_ofono_running(pa_bluetooth_discovery *y, bool is_running);
