@@ -72,33 +72,35 @@ pa_hook_result_t transport_speaker_gain_changed_cb(pa_bluetooth_discovery *y, co
 
 pa_hook_result_t device_connection_changed_cb(pa_bluetooth_discovery *y, const pa_bluetooth_device *d, struct userdata *u)
 {
-    pa_log("YAY in device connection changed!");
-    return PA_HOOK_OK;
-}
+    pa_module *m;
+    size_t mod_args_size;
+    char *mod_args;
 
-pa_hook_result_t transport_state_changed_cb(pa_bluetooth_discovery *y, const pa_bluetooth_transport *t, struct userdata *u)
-{
-    pa_log("YAY in transport state changed!");
+    pa_log("YAY in device connection changed!");
+    if ((m = pa_hashmap_get(u->connected_device_paths, d->path)))
+        return PA_HOOK_OK;
+    mod_args_size = strlen("path=") + strlen(d->path) + 1;
+    mod_args = pa_xmalloc0();
+    sprintf(mod_args, mod_args_size, "path=%s", d->path);
+    pa_module_load(&m, u->core, "module-bluez5-device", mod_args);
+    pa_hashmap_put(u->connected_device_paths, d->path, m);
+    pa_xfree(mod_args);
     return PA_HOOK_OK;
 }
 
 pa_hook_result_t device_unlinked_cb(pa_bluetooth_discovery *y, const pa_bluetooth_device *d, struct userdata *u)
 {
+    pa_module *m;
+
     pa_log("YAY in device unlinked!");
+    if (!(m = pa_hashmap_get(u->connected_device_paths, d->path)))
+        return PA_HOOK_OK;
+
+    pa_module_unload(m, false);
+    pa_hashmap_remove(u->connected_device_paths, d->path);
     return PA_HOOK_OK;
 }
 
-pa_hook_result_t transport_microphone_gain_changed_cb(pa_bluetooth_discovery *y, const pa_bluetooth_transport *t, struct userdata *u)
-{
-    pa_log("YAY in transport mic volume changed!");
-    return PA_HOOK_OK;
-}
-
-pa_hook_result_t transport_speaker_gain_changed_cb(pa_bluetooth_discovery *y, const pa_bluetooth_transport *t, struct userdata *u)
-{
-    pa_log("YAY in transport speaker volume changed!");
-    return PA_HOOK_OK;
-}
 
 int pa__init(pa_module *m) {
     struct userdata *u;
@@ -153,18 +155,9 @@ int pa__init(pa_module *m) {
     u->device_connection_changed_slot =
         pa_hook_connect(pa_bluetooth_discovery_hook(u->discovery, PA_BLUETOOTH_HOOK_DEVICE_CONNECTION_CHANGED),
                         PA_HOOK_NORMAL, (pa_hook_cb_t) device_connection_changed_cb, u);
-    u->transport_microphone_gain_changed_slot =
-        pa_hook_connect(pa_bluetooth_discovery_hook(u->discovery, PA_BLUETOOTH_HOOK_TRANSPORT_MICROPHONE_GAIN_CHANGED),
-                        PA_HOOK_NORMAL, (pa_hook_cb_t) transport_microphone_gain_changed_cb, u);
-    u->transport_speaker_gain_changed_slot =
-        pa_hook_connect(pa_bluetooth_discovery_hook(u->discovery, PA_BLUETOOTH_HOOK_TRANSPORT_SPEAKER_GAIN_CHANGED),
-                        PA_HOOK_NORMAL, (pa_hook_cb_t) transport_speaker_gain_changed_cb, u);
     u->device_unlinked_slot =
         pa_hook_connect(pa_bluetooth_discovery_hook(u->discovery, PA_BLUETOOTH_HOOK_DEVICE_UNLINK),
                         PA_HOOK_NORMAL, (pa_hook_cb_t) device_unlinked_cb, u);
-    u->transport_state_changed_slot =
-        pa_hook_connect(pa_bluetooth_discovery_hook(u->discovery, PA_BLUETOOTH_HOOK_TRANSPORT_STATE_CHANGED),
-                        PA_HOOK_NORMAL, (pa_hook_cb_t) transport_state_changed_cb, u);
 
     pa_log_notice("Happy as a cammel!");
 
