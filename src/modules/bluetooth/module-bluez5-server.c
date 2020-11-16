@@ -80,8 +80,8 @@ pa_hook_result_t device_connection_changed_cb(pa_bluetooth_discovery *y, const p
     if ((m = pa_hashmap_get(u->connected_device_paths, d->path)))
         return PA_HOOK_OK;
     mod_args_size = strlen("path=") + strlen(d->path) + 1;
-    mod_args = pa_xmalloc0();
-    sprintf(mod_args, mod_args_size, "path=%s", d->path);
+    mod_args = pa_xmalloc0(mod_args_size);
+    snprintf(mod_args, mod_args_size, "path=%s", d->path);
     pa_module_load(&m, u->core, "module-bluez5-device", mod_args);
     pa_hashmap_put(u->connected_device_paths, d->path, m);
     pa_xfree(mod_args);
