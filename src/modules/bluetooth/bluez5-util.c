@@ -283,6 +283,7 @@ void pa_bluetooth_transport_set_state(pa_bluetooth_transport *t, pa_bluetooth_tr
 
     t->state = state;
 
+    pa_log_error("Firing change state");
     pa_hook_fire(&t->device->discovery->hooks[PA_BLUETOOTH_HOOK_TRANSPORT_STATE_CHANGED], t);
 
     /* If there are profiles that are expected to get connected soon (based
@@ -331,6 +332,7 @@ void pa_bluetooth_transport_put(pa_bluetooth_transport *t) {
 
     t->device->transports[t->profile] = t;
     pa_assert_se(pa_hashmap_put(t->device->discovery->transports, t->path, t) >= 0);
+    pa_log_error("Firing change state in PUT");
     pa_hook_fire(&t->device->discovery->hooks[PA_BLUETOOTH_HOOK_TRANSPORT_STATE_CHANGED], t);
 }
 
@@ -499,9 +501,10 @@ static void parse_transport_property(pa_bluetooth_transport *t, DBusMessageIter 
 
         case DBUS_TYPE_UINT16: {
 
+            dbus_uint16_t value;
+
             pa_log("IN Parse Property UINT16");
 
-            dbus_uint16_t value;
             dbus_message_iter_get_basic(&variant_i, &value);
 
             if (pa_streq(key, "Volume")) {
