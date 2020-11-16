@@ -1149,6 +1149,7 @@ pa_hook* pa_bluetooth_discovery_hook(pa_bluetooth_discovery *y, pa_bluetooth_hoo
 
 static DBusHandlerResult filter_cb(DBusConnection *bus, DBusMessage *m, void *userdata) {
     pa_bluetooth_discovery *y;
+    DBusMessage *m_copy;
     DBusError err;
 
     pa_assert(bus);
@@ -1158,8 +1159,8 @@ static DBusHandlerResult filter_cb(DBusConnection *bus, DBusMessage *m, void *us
     dbus_error_init(&err);
 
     // Print copy of Message
-    DBusMessage *m_copy = dbus_message_copy(m);
-    print_message_printer(pa_log_notice, m_copy, TRUE);
+    m_copy = dbus_message_copy(m);
+    print_message_printer(&fnc_pa_log_notice, m_copy, TRUE);
     dbus_message_unref(m_copy);
 
     if (dbus_message_is_signal(m, "org.freedesktop.DBus", "NameOwnerChanged")) {

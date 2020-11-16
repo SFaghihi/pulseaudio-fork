@@ -24,7 +24,6 @@
 #include "dbus-print-message.h"
 
 #include <stdlib.h>
-#include <pulsecore/log.h>
 
 static const char*
 type_to_name (int message_type)
@@ -142,7 +141,7 @@ print_ay (printer_fnc_t printer, DBusMessageIter *iter, int depth)
   free (bytes);
 }
 
-static void
+void
 print_iter (printer_fnc_t printer, DBusMessageIter *iter, dbus_bool_t literal, int depth)
 {
   do
@@ -357,7 +356,7 @@ print_iter (printer_fnc_t printer, DBusMessageIter *iter, dbus_bool_t literal, i
 void
 print_message (DBusMessage *message, dbus_bool_t literal)
 {
-    return print_message_printer(pa_log_error, message, literal);
+    print_message_printer(&fnc_pa_log_error, message, literal);
 }
 
 void print_message_printer (printer_fnc_t printer, DBusMessage *message, dbus_bool_t literal)
@@ -408,6 +407,4 @@ void print_message_printer (printer_fnc_t printer, DBusMessage *message, dbus_bo
 
     dbus_message_iter_init (message, &iter);
     print_iter (printer, &iter, literal, 1);
-    if (printer == &printf)
-        fflush (stdout);
 }
