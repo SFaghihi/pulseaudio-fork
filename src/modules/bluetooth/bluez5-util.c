@@ -502,6 +502,8 @@ static void parse_transport_property(pa_bluetooth_transport *t, DBusMessageIter 
                 switch (t->profile) {
                     case PA_BLUETOOTH_PROFILE_HEADSET_HEAD_UNIT:
                     case PA_BLUETOOTH_PROFILE_A2DP_SINK: {
+                        if (value == t->microphone_gain)
+                            break;
                         t->microphone_gain = value;
                         pa_hook_fire(
                             &t->device->discovery->hooks[PA_BLUETOOTH_HOOK_TRANSPORT_MICROPHONE_GAIN_CHANGED],
@@ -510,6 +512,8 @@ static void parse_transport_property(pa_bluetooth_transport *t, DBusMessageIter 
                     }
                     case PA_BLUETOOTH_PROFILE_HEADSET_AUDIO_GATEWAY:
                     case PA_BLUETOOTH_PROFILE_A2DP_SOURCE: {
+                        if (value == t->speaker_gain)
+                            break;
                         t->speaker_gain = value;
                         pa_hook_fire(
                             &t->device->discovery->hooks[PA_BLUETOOTH_HOOK_TRANSPORT_SPEAKER_GAIN_CHANGED],
@@ -1160,7 +1164,8 @@ static DBusHandlerResult filter_cb(DBusConnection *bus, DBusMessage *m, void *us
 
     // Print copy of Message
     m_copy = dbus_message_copy(m);
-    print_message_printer(&fnc_pa_log_notice, m_copy, TRUE);
+    pa_log_error("New Message:");
+    print_message_printer(&fnc_pa_log_notice, m_copy, FALSE);
     dbus_message_unref(m_copy);
 
     if (dbus_message_is_signal(m, "org.freedesktop.DBus", "NameOwnerChanged")) {
