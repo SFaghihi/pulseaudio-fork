@@ -36,6 +36,7 @@
 
 #include "a2dp-codec-util.h"
 #include "a2dp-codecs.h"
+#include "dbus-print-message.h"
 
 #include "bluez5-util.h"
 
