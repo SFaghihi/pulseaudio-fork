@@ -2,6 +2,7 @@ libbluez5_util_sources = [
   'a2dp-codec-sbc.c',
   'a2dp-codec-util.c',
   'bluez5-util.c',
+  'dbus-print-message.c',
 ]
 
 libbluez5_util_headers = [
@@ -10,6 +11,7 @@ libbluez5_util_headers = [
   'a2dp-codec-util.h',
   'bluez5-util.h',
   'rtp.h',
+  'dbus-print-message.h',
 ]
 
 if get_option('bluez5-native-headset')

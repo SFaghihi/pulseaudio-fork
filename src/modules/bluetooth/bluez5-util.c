@@ -1156,6 +1156,11 @@ static DBusHandlerResult filter_cb(DBusConnection *bus, DBusMessage *m, void *us
 
     dbus_error_init(&err);
 
+    // Print copy of Message
+    DBusMessage *m_copy = dbus_message_copy(m);
+    print_message_printer(pa_log_notice, m_copy, TRUE);
+    dbus_message_unref(m_copy);
+
     if (dbus_message_is_signal(m, "org.freedesktop.DBus", "NameOwnerChanged")) {
         const char *name, *old_owner, *new_owner;
 
