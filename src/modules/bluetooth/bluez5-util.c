@@ -331,7 +331,7 @@ void pa_bluetooth_transport_put(pa_bluetooth_transport *t) {
 
     t->device->transports[t->profile] = t;
     pa_assert_se(pa_hashmap_put(t->device->discovery->transports, t->path, t) >= 0);
-    pa_bluetooth_transport_set_state(t, PA_BLUETOOTH_TRANSPORT_STATE_IDLE);
+    pa_hook_fire(&t->device->discovery->hooks[PA_BLUETOOTH_HOOK_TRANSPORT_STATE_CHANGED], t);
 }
 
 void pa_bluetooth_transport_unlink(pa_bluetooth_transport *t) {
@@ -470,6 +470,7 @@ static void parse_transport_property(pa_bluetooth_transport *t, DBusMessageIter 
     if (key == NULL)
         return;
 
+    pa_log("IN Parse Property");
     dbus_message_iter_recurse(i, &variant_i);
 
     switch (dbus_message_iter_get_arg_type(&variant_i)) {
@@ -479,6 +480,8 @@ static void parse_transport_property(pa_bluetooth_transport *t, DBusMessageIter 
             const char *value;
             dbus_message_iter_get_basic(&variant_i, &value);
 
+            pa_log("IN Parse Property STRING");
+
             if (pa_streq(key, "State")) {
                 pa_bluetooth_transport_state_t state;
 
@@ -487,6 +490,7 @@ static void parse_transport_property(pa_bluetooth_transport *t, DBusMessageIter 
                     return;
                 }
 
+                pa_log("IN Parse Property Set State");
                 pa_bluetooth_transport_set_state(t, state);
             }
 
@@ -495,10 +499,13 @@ static void parse_transport_property(pa_bluetooth_transport *t, DBusMessageIter 
 
         case DBUS_TYPE_UINT16: {
 
+            pa_log("IN Parse Property UINT16");
+
             dbus_uint16_t value;
             dbus_message_iter_get_basic(&variant_i, &value);
 
             if (pa_streq(key, "Volume")) {
+                pa_log("IN Parse Property Set Vol");
                 switch (t->profile) {
                     case PA_BLUETOOTH_PROFILE_HEADSET_HEAD_UNIT:
                     case PA_BLUETOOTH_PROFILE_A2DP_SINK: {
